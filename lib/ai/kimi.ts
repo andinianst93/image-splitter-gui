@@ -19,6 +19,23 @@ export type KimiResponse =
   | { ok: true; result: KimiGridResult }
   | { ok: false; error: KimiError }
 
+function extractText(value: unknown): string {
+  if (typeof value === "string") return value
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => {
+        if (typeof item === "string") return item
+        if (item && typeof item === "object") {
+          const record = item as Record<string, unknown>
+          if (typeof record.text === "string") return record.text
+        }
+        return ""
+      })
+      .join("\n")
+  }
+  return ""
+}
+
 export async function analyzeGrid(
   imageBuffer: Buffer,
   mimeType: string
@@ -104,14 +121,12 @@ Rules:
     const data = await response.json()
     // kimi-k2.5 is a thinking model: answer may be in content or reasoning_content
     const msg = data.choices?.[0]?.message ?? {}
-    const content: string =
-      (typeof msg.content === "string" && msg.content.trim()
-        ? msg.content
-        : msg.reasoning_content ?? "") as string
+    const content =
+      extractText(msg.content).trim() || extractText(msg.reasoning_content).trim()
     console.log("[Moonshot] finish_reason:", data.choices?.[0]?.finish_reason)
     console.log("[Moonshot] content:", content.slice(0, 300))
 
-    const jsonMatch = content.match(/\{[\s\S]*?\}/)
+    const jsonMatch = content.match(/\{[\s\S]*\}/)
     if (!jsonMatch) {
       return {
         ok: false,
@@ -141,8 +156,8 @@ Rules:
       }
     }
 
-    const confidence =
-      typeof result.confidence === "number" ? result.confidence : 0.8
+    const rawConfidence = typeof result.confidence === "number" ? result.confidence : 0.8
+    const confidence = rawConfidence > 1 ? rawConfidence / 100 : rawConfidence
     if (confidence < 0.6) {
       return {
         ok: false,

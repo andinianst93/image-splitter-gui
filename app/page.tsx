@@ -78,8 +78,15 @@ export default function Home() {
       setStage("Processing cells…")
 
       if (!res.ok) {
-        const err = await res.json()
-        throw new Error(err.error ?? "Split failed")
+        let message = "Split failed"
+        try {
+          const err = await res.json()
+          message = err.error ?? message
+        } catch {
+          const text = await res.text().catch(() => "")
+          if (text) message = text.slice(0, 200)
+        }
+        throw new Error(message)
       }
 
       const data: SplitResult = await res.json()
