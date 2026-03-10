@@ -19,6 +19,15 @@ export type KimiResponse =
   | { ok: true; result: KimiGridResult }
   | { ok: false; error: KimiError }
 
+const KIMI_URL = "https://api.moonshot.cn/v1/chat/completions"
+const KIMI_MODEL = "kimi-k2.5"
+const KIMI_TIMEOUT_MS = 25000
+const KIMI_MAX_RETRIES = 2
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
 function extractText(value: unknown): string {
   if (typeof value === "string") return value
   if (Array.isArray(value)) {
@@ -77,16 +86,18 @@ Rules:
 - DO NOT confuse rows and cols; DO NOT undercount rows for a tall image`
 
   try {
-    const response = await fetch(
-      "https://api.moonshot.cn/v1/chat/completions",
-      {
+    let lastStatus: number | undefined
+    let lastDetail = ""
+
+    for (let attempt = 0; attempt <= KIMI_MAX_RETRIES; attempt++) {
+      const response = await fetch(KIMI_URL, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
-          model: "kimi-k2.5",
+          model: KIMI_MODEL,
           messages: [
             {
               role: "user",
@@ -96,79 +107,114 @@ Rules:
               ],
             },
           ],
-          max_tokens: 8192,
-          temperature: 1,
+          max_tokens: 512,
+          temperature: 0,
         }),
-        signal: AbortSignal.timeout(60000),
-      }
-    )
+        signal: AbortSignal.timeout(KIMI_TIMEOUT_MS),
+      })
 
-    if (!response.ok) {
-      let detail = ""
+      if (!response.ok) {
+        let detail = ""
+        try {
+          const body = await response.json()
+          detail = body?.error?.message ?? JSON.stringify(body)
+        } catch {
+          detail = await response.text().catch(() => "")
+        }
+
+        lastStatus = response.status
+        lastDetail = detail
+
+        const retryable = response.status === 429 || response.status >= 500
+        if (retryable && attempt < KIMI_MAX_RETRIES) {
+          await sleep(400 * (attempt + 1))
+          continue
+        }
+
+        console.error(`[Moonshot] HTTP ${response.status}:`, detail)
+        return {
+          ok: false,
+          error: { reason: `API error ${response.status}`, status: response.status, detail },
+        }
+      }
+
+      const data = await response.json()
+      const msg = data.choices?.[0]?.message ?? {}
+      const content =
+        extractText(msg.content).trim() || extractText(msg.reasoning_content).trim()
+      console.log("[Moonshot] finish_reason:", data.choices?.[0]?.finish_reason)
+      console.log("[Moonshot] content:", content.slice(0, 300))
+
+      const jsonMatch = content.match(/\{[\s\S]*\}/)
+      if (!jsonMatch) {
+        if (attempt < KIMI_MAX_RETRIES) {
+          await sleep(300 * (attempt + 1))
+          continue
+        }
+        return {
+          ok: false,
+          error: { reason: "No JSON in response", detail: content.slice(0, 200) },
+        }
+      }
+
+      let result: KimiGridResult
       try {
-        const body = await response.json()
-        detail = body?.error?.message ?? JSON.stringify(body)
+        result = JSON.parse(jsonMatch[0]) as KimiGridResult
       } catch {
-        detail = await response.text().catch(() => "")
+        if (attempt < KIMI_MAX_RETRIES) {
+          await sleep(300 * (attempt + 1))
+          continue
+        }
+        return {
+          ok: false,
+          error: { reason: "JSON parse failed", detail: jsonMatch[0] },
+        }
       }
-      console.error(`[Moonshot] HTTP ${response.status}:`, detail)
-      return {
-        ok: false,
-        error: { reason: `API error ${response.status}`, status: response.status, detail },
+
+      if (
+        typeof result.rows !== "number" ||
+        result.rows < 1 ||
+        typeof result.cols !== "number" ||
+        result.cols < 1
+      ) {
+        if (attempt < KIMI_MAX_RETRIES) {
+          await sleep(300 * (attempt + 1))
+          continue
+        }
+        return {
+          ok: false,
+          error: { reason: "Invalid grid values", detail: JSON.stringify(result) },
+        }
       }
+
+      const rawConfidence =
+        typeof result.confidence === "number" ? result.confidence : 0.8
+      const confidence = rawConfidence > 1 ? rawConfidence / 100 : rawConfidence
+      if (confidence < 0.5) {
+        if (attempt < KIMI_MAX_RETRIES) {
+          await sleep(300 * (attempt + 1))
+          continue
+        }
+        return {
+          ok: false,
+          error: {
+            reason: `Low confidence (${confidence.toFixed(2)})`,
+            detail: JSON.stringify(result),
+          },
+        }
+      }
+
+      return { ok: true, result: { ...result, confidence } }
     }
 
-    const data = await response.json()
-    // kimi-k2.5 is a thinking model: answer may be in content or reasoning_content
-    const msg = data.choices?.[0]?.message ?? {}
-    const content =
-      extractText(msg.content).trim() || extractText(msg.reasoning_content).trim()
-    console.log("[Moonshot] finish_reason:", data.choices?.[0]?.finish_reason)
-    console.log("[Moonshot] content:", content.slice(0, 300))
-
-    const jsonMatch = content.match(/\{[\s\S]*\}/)
-    if (!jsonMatch) {
-      return {
-        ok: false,
-        error: { reason: "No JSON in response", detail: content.slice(0, 200) },
-      }
+    return {
+      ok: false,
+      error: {
+        reason: `API error${lastStatus ? ` ${lastStatus}` : ""}`,
+        status: lastStatus,
+        detail: lastDetail,
+      },
     }
-
-    let result: KimiGridResult
-    try {
-      result = JSON.parse(jsonMatch[0]) as KimiGridResult
-    } catch {
-      return {
-        ok: false,
-        error: { reason: "JSON parse failed", detail: jsonMatch[0] },
-      }
-    }
-
-    if (
-      typeof result.rows !== "number" ||
-      result.rows < 1 ||
-      typeof result.cols !== "number" ||
-      result.cols < 1
-    ) {
-      return {
-        ok: false,
-        error: { reason: "Invalid grid values", detail: JSON.stringify(result) },
-      }
-    }
-
-    const rawConfidence = typeof result.confidence === "number" ? result.confidence : 0.8
-    const confidence = rawConfidence > 1 ? rawConfidence / 100 : rawConfidence
-    if (confidence < 0.6) {
-      return {
-        ok: false,
-        error: {
-          reason: `Low confidence (${confidence.toFixed(2)})`,
-          detail: JSON.stringify(result),
-        },
-      }
-    }
-
-    return { ok: true, result: { ...result, confidence } }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     console.error("[Moonshot] fetch error:", msg)
