@@ -132,20 +132,42 @@ export function ReassembleBoard({ result, quality }: ReassembleBoardProps) {
     setIsBuilding(true)
     setAssembled(null)
     try {
+      const payload = {
+        cells: cells.slice(0, outRows * outCols),
+        rows: outRows,
+        cols: outCols,
+        quality: outQuality,
+        gap,
+      }
+
+      const payloadText = JSON.stringify(payload)
+      const payloadBytes = new TextEncoder().encode(payloadText).length
+      if (payloadBytes > 4_000_000) {
+        throw new Error(
+          "Reassemble request too large. Reduce upscale/quality or use fewer output cells."
+        )
+      }
+
       const res = await fetch("/api/reassemble", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          cells: cells.slice(0, outRows * outCols),
-          rows: outRows,
-          cols: outCols,
-          quality: outQuality,
-          gap,
-        }),
+        body: payloadText,
       })
       if (!res.ok) {
-        const err = await res.json()
-        throw new Error(err.error ?? "Reassemble failed")
+        let message = "Reassemble failed"
+        try {
+          const err = await res.json()
+          message = err.error ?? message
+        } catch {
+          const text = await res.text().catch(() => "")
+          if (res.status === 413 || /request entity too large/i.test(text)) {
+            message =
+              "Reassemble request too large. Reduce upscale/quality or use fewer output cells."
+          } else if (text) {
+            message = text.slice(0, 200)
+          }
+        }
+        throw new Error(message)
       }
       const data = await res.json()
       setAssembled(data)
