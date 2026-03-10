@@ -30,6 +30,41 @@ function chromaSum(c: PixelColor): number {
   )
 }
 
+function rowMatchRatio(
+  data: Buffer,
+  width: number,
+  y: number,
+  channels: number,
+  borderColor: PixelColor,
+  tol: number
+): number {
+  let matched = 0
+  for (let x = 0; x < width; x++) {
+    if (colorDiff(getPixel(data, width, x, y, channels), borderColor) <= tol) {
+      matched++
+    }
+  }
+  return matched / width
+}
+
+function colMatchRatio(
+  data: Buffer,
+  width: number,
+  height: number,
+  x: number,
+  channels: number,
+  borderColor: PixelColor,
+  tol: number
+): number {
+  let matched = 0
+  for (let y = 0; y < height; y++) {
+    if (colorDiff(getPixel(data, width, x, y, channels), borderColor) <= tol) {
+      matched++
+    }
+  }
+  return matched / height
+}
+
 function isRowUniform(
   data: Buffer,
   width: number,
@@ -38,11 +73,7 @@ function isRowUniform(
   borderColor: PixelColor,
   tol: number
 ): boolean {
-  for (let x = 0; x < width; x++) {
-    if (colorDiff(getPixel(data, width, x, y, channels), borderColor) > tol)
-      return false
-  }
-  return true
+  return rowMatchRatio(data, width, y, channels, borderColor, tol) >= 1
 }
 
 function isColUniform(
@@ -54,11 +85,7 @@ function isColUniform(
   borderColor: PixelColor,
   tol: number
 ): boolean {
-  for (let y = 0; y < height; y++) {
-    if (colorDiff(getPixel(data, width, x, y, channels), borderColor) > tol)
-      return false
-  }
-  return true
+  return colMatchRatio(data, width, height, x, channels, borderColor, tol) >= 1
 }
 
 function detectBorderColor(
@@ -111,25 +138,49 @@ export function calculateTrimDepths(
   const borderColor = detectBorderColor(data, width, height, channels, tol)
   if (!borderColor) return null
 
+  const edgeMatchThreshold = 0.985
+
   let top = 0
-  while (top < height && isRowUniform(data, width, top, channels, borderColor, tol))
+  while (
+    top < height &&
+    rowMatchRatio(data, width, top, channels, borderColor, tol) >= edgeMatchThreshold
+  )
     top++
 
   let bottom = 0
   while (
     bottom < height &&
-    isRowUniform(data, width, height - 1 - bottom, channels, borderColor, tol)
+    rowMatchRatio(
+      data,
+      width,
+      height - 1 - bottom,
+      channels,
+      borderColor,
+      tol
+    ) >= edgeMatchThreshold
   )
     bottom++
 
   let left = 0
-  while (left < width && isColUniform(data, width, height, left, channels, borderColor, tol))
+  while (
+    left < width &&
+    colMatchRatio(data, width, height, left, channels, borderColor, tol) >=
+      edgeMatchThreshold
+  )
     left++
 
   let right = 0
   while (
     right < width &&
-    isColUniform(data, width, height, width - 1 - right, channels, borderColor, tol)
+    colMatchRatio(
+      data,
+      width,
+      height,
+      width - 1 - right,
+      channels,
+      borderColor,
+      tol
+    ) >= edgeMatchThreshold
   )
     right++
 

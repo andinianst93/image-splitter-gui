@@ -44,13 +44,10 @@ export async function POST(req: NextRequest) {
 
     const widths = cellBuffers.map((cell) => cell.width).sort((a, b) => a - b)
     const heights = cellBuffers.map((cell) => cell.height).sort((a, b) => a - b)
-    const minWidth = widths[0]
     const maxWidth = widths[widths.length - 1]
-    const minHeight = heights[0]
     const maxHeight = heights[heights.length - 1]
     const slotWidth = maxWidth
     const slotHeight = maxHeight
-    const nearUniform = maxWidth - minWidth <= 2 && maxHeight - minHeight <= 2
 
     // Accumulate x/y offsets
     const xOffsets = [0]
@@ -71,17 +68,7 @@ export async function POST(req: NextRequest) {
         const r = Math.floor(i / cols)
         const c = i % cols
         const resized = await sharp(cell.buf)
-          .resize(
-            slotWidth,
-            slotHeight,
-            nearUniform
-              ? { fit: "fill" }
-              : {
-                  fit: "contain",
-                  position: "centre",
-                  background: { r: 255, g: 255, b: 255, alpha: 0 },
-                }
-          )
+          .resize(slotWidth, slotHeight, { fit: "fill" })
           .toBuffer()
         return {
           input: resized,
