@@ -48,38 +48,35 @@ export async function POST(req: NextRequest) {
       })
     )
 
-    // Compute per-column widths and per-row heights (max of cells in that col/row)
-    const colWidths = Array(cols).fill(0) as number[]
-    const rowHeights = Array(rows).fill(0) as number[]
-
-    cellBuffers.forEach((cell, i) => {
-      const r = Math.floor(i / cols)
-      const c = i % cols
-      if (cell.width > colWidths[c]) colWidths[c] = cell.width
-      if (cell.height > rowHeights[r]) rowHeights[r] = cell.height
-    })
+    const widths = cellBuffers.map((cell) => cell.width).sort((a, b) => a - b)
+    const heights = cellBuffers.map((cell) => cell.height).sort((a, b) => a - b)
+    const slotWidth = widths[Math.floor(widths.length / 2)]
+    const slotHeight = heights[Math.floor(heights.length / 2)]
 
     // Accumulate x/y offsets
     const xOffsets = [0]
     for (let c = 0; c < cols - 1; c++) {
-      xOffsets.push(xOffsets[c] + colWidths[c] + gap)
+      xOffsets.push(xOffsets[c] + slotWidth + gap)
     }
     const yOffsets = [0]
     for (let r = 0; r < rows - 1; r++) {
-      yOffsets.push(yOffsets[r] + rowHeights[r] + gap)
+      yOffsets.push(yOffsets[r] + slotHeight + gap)
     }
 
-    const totalWidth = xOffsets[cols - 1] + colWidths[cols - 1]
-    const totalHeight = yOffsets[rows - 1] + rowHeights[rows - 1]
+    const totalWidth = xOffsets[cols - 1] + slotWidth
+    const totalHeight = yOffsets[rows - 1] + slotHeight
 
     // Build composite list
     const composites: sharp.OverlayOptions[] = await Promise.all(
       cellBuffers.map(async (cell, i) => {
         const r = Math.floor(i / cols)
         const c = i % cols
-        // Resize cell to match its slot dimensions
         const resized = await sharp(cell.buf)
-          .resize(colWidths[c], rowHeights[r], { fit: "fill" })
+          .resize(slotWidth, slotHeight, {
+            fit: "contain",
+            position: "centre",
+            background: { r: 255, g: 255, b: 255, alpha: 0 },
+          })
           .toBuffer()
         return {
           input: resized,
@@ -90,12 +87,12 @@ export async function POST(req: NextRequest) {
     )
 
     // Create canvas and composite
-    let pipeline = sharp({
+    const pipeline = sharp({
       create: {
         width: totalWidth,
         height: totalHeight,
         channels: 4,
-        background: { r: 0, g: 0, b: 0, alpha: 255 },
+        background: { r: 255, g: 255, b: 255, alpha: 0 },
       },
     }).composite(composites)
 
@@ -105,7 +102,7 @@ export async function POST(req: NextRequest) {
       outputBuffer = await pipeline.png({ compressionLevel: 6 }).toBuffer()
       mimeType = "image/png"
     } else {
-      outputBuffer = await pipeline.flatten({ background: "#000000" }).jpeg({ quality }).toBuffer()
+      outputBuffer = await pipeline.flatten({ background: "#ffffff" }).jpeg({ quality }).toBuffer()
       mimeType = "image/jpeg"
     }
 

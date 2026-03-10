@@ -2,13 +2,14 @@
 
 import { useState, useCallback } from "react"
 import { toast } from "sonner"
-import { Scissors } from "lucide-react"
+import { Scissors, ArrowLeft } from "lucide-react"
 import { UploadZone } from "@/components/upload-zone"
 import { SplitOptions } from "@/components/split-options"
 import { CellGrid } from "@/components/cell-grid"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import type { SplitConfig, SplitResult } from "@/types"
 
 const DEFAULT_CONFIG: SplitConfig = {
@@ -29,6 +30,7 @@ export default function Home() {
   const [isProcessing, setIsProcessing] = useState(false)
   const [progress, setProgress] = useState(0)
   const [stage, setStage] = useState("")
+
   const handleFileSelect = useCallback((f: File) => {
     setFile(f)
     setResult(null)
@@ -45,6 +47,10 @@ export default function Home() {
       if (prev) URL.revokeObjectURL(prev)
       return null
     })
+  }, [])
+
+  const handleBack = useCallback(() => {
+    setResult(null)
   }, [])
 
   const handleSplit = useCallback(async () => {
@@ -114,61 +120,74 @@ export default function Home() {
               <h1 className="text-xl font-semibold tracking-tight text-foreground">
                 Image Splitter
               </h1>
-              <Badge
-                variant="secondary"
-                className="text-xs"
-              >
+              <Badge variant="secondary" className="text-xs">
                 Beta
               </Badge>
             </div>
             <p className="mt-2 pl-12 text-sm text-muted-foreground">
-              Split collage images into individual cells — AI-powered or
-              algorithmic
+              Split collage images into individual cells — AI-powered or algorithmic
             </p>
           </div>
           <ThemeToggle />
         </header>
 
-        {/* Layout */}
-        <div className="grid grid-cols-1 gap-5 md:grid-cols-[1fr_272px]">
-          {/* Left */}
-          <div className="space-y-5">
-            <UploadZone
-              onFileSelect={handleFileSelect}
-              selectedFile={file}
-              previewUrl={previewUrl}
-              onClear={handleClear}
-            />
+        {/* Step 1: Upload & Options */}
+        {!result && (
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-[1fr_272px]">
+            <div className="space-y-5">
+              <UploadZone
+                onFileSelect={handleFileSelect}
+                selectedFile={file}
+                previewUrl={previewUrl}
+                onClear={handleClear}
+              />
 
-            {/* Progress */}
-            {isProcessing && (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">{stage}</span>
-                  <span className="text-sm text-muted-foreground/60">{progress}%</span>
+              {isProcessing && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">{stage}</span>
+                    <span className="text-sm text-muted-foreground/60">{progress}%</span>
+                  </div>
+                  <Progress
+                    value={progress}
+                    className="h-0.5 bg-muted [&>div]:bg-foreground [&>div]:transition-all"
+                  />
                 </div>
-                <Progress
-                  value={progress}
-                  className="h-0.5 bg-muted [&>div]:bg-foreground [&>div]:transition-all"
-                />
-              </div>
-            )}
+              )}
+            </div>
 
-            {/* Results */}
-            {result && <CellGrid result={result} quality={config.quality} />}
+            <aside>
+              <SplitOptions
+                config={config}
+                onChange={setConfig}
+                onSplit={handleSplit}
+                isProcessing={isProcessing}
+                hasFile={!!file}
+              />
+            </aside>
           </div>
+        )}
 
-          {/* Right: options */}
-          <aside>
-            <SplitOptions
-              config={config}
-              onChange={setConfig}
-              onSplit={handleSplit}
-              isProcessing={isProcessing}
-              hasFile={!!file}
-            />
-          </aside>
-        </div>
+        {/* Step 2: Results */}
+        {result && (
+          <div className="space-y-5">
+            <div className="flex items-center gap-3">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleBack}
+                className="gap-2 text-muted-foreground hover:text-foreground"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Back
+              </Button>
+              <span className="text-sm text-muted-foreground">
+                {file?.name} · {result.cells.length} cells · {result.grid.rows}×{result.grid.cols}
+              </span>
+            </div>
+            <CellGrid result={result} quality={config.quality} />
+          </div>
+        )}
       </div>
     </div>
   )

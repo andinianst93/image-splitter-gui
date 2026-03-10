@@ -31,6 +31,7 @@ export async function POST(req: NextRequest) {
       ...config,
       // Manual mode should use strict uniform slicing only.
       auto: isAutoMode ? config.auto : false,
+      trim: isAutoMode ? config.trim : false,
     }
 
     // Auto mode: always try Kimi AI to detect grid size

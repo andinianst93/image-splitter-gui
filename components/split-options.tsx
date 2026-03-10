@@ -42,6 +42,7 @@ export function SplitOptions({
         rows: config.rows || 2,
         cols: config.cols || 2,
         auto: false,
+        trim: false,
       })
     }
   }
@@ -108,6 +109,7 @@ export function SplitOptions({
                     ...config,
                     rows: parseInt(e.target.value) || 1,
                     auto: false,
+                    trim: false,
                   })
                 }
                 className="h-9 text-sm"
@@ -125,6 +127,7 @@ export function SplitOptions({
                     ...config,
                     cols: parseInt(e.target.value) || 1,
                     auto: false,
+                    trim: false,
                   })
                 }
                 className="h-9 text-sm"
@@ -174,10 +177,16 @@ export function SplitOptions({
             </Tooltip>
           </div>
           <Switch
-            checked={config.trim}
+            checked={mode === "manual" ? false : config.trim}
+            disabled={mode === "manual"}
             onCheckedChange={(v) => onChange({ ...config, trim: v })}
           />
         </div>
+        {mode === "manual" && (
+          <p className="text-xs text-muted-foreground/70">
+            Trim disabled in Manual mode to keep all cells aligned for reassembly.
+          </p>
+        )}
 
         <Separator />
 
