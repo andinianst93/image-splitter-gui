@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       {
         error: isNoSeparator
-          ? "Could not detect grid automatically — image has no visible separator lines. Switch to Manual mode and specify rows & cols, or enable Kimi AI."
+          ? "Could not detect grid automatically — no visible separator lines found. Switch to Manual mode and specify rows & cols."
           : msg,
       },
       { status: isNoSeparator ? 422 : 500 }

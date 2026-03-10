@@ -214,15 +214,19 @@ export function autoDetectGridSize(
    */
   function countFromVariance(variances: number[], dimension: number): number {
     const minCell = Math.max(20, Math.floor(dimension * 0.05))
-    const maxBandWidth = Math.max(2, Math.floor(dimension * 0.03))
 
     // Find the "floor" variance: bottom 5th percentile (most uniform rows)
     const sorted = [...variances].sort((a, b) => a - b)
     const p5 = sorted[Math.floor(sorted.length * 0.05)]
+    const p50 = sorted[Math.floor(sorted.length * 0.5)]
 
-    // A row is a separator candidate if its variance is ≤ 4× the floor
-    // This catches grey (var≈0), white (var≈0), and near-uniform rows (JPEG noise)
-    const threshold = Math.max(p5 * 4, 8)
+    // Require a meaningful contrast between separator rows and content rows.
+    // If p5 ≈ p50 the image is edge-to-edge with no uniform separator bands.
+    if (p5 * 6 >= p50) return 0
+
+    // Threshold: 6× the floor variance, min 25 to tolerate JPEG noise on
+    // beige/grey separators (JPEG quantisation can push variance to ~10–20).
+    const threshold = Math.max(p5 * 6, 25)
 
     let bands = 0
     let runStart = -1
@@ -236,11 +240,7 @@ export function autoDetectGridSize(
       }
 
       if ((!isCandidate || !inside) && runStart >= 0) {
-        const runEnd = i - 1
-        const runWidth = runEnd - runStart + 1
-        if (runWidth <= maxBandWidth) {
-          bands++
-        }
+        bands++
         runStart = -1
       }
     }
