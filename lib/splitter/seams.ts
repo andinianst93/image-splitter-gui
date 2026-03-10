@@ -46,14 +46,28 @@ function boxFilter(arr: number[], radius: number): number[] {
 function snapToGapCenter(
   pos: number,
   brightness: number[],
+  variance: number[],
   tol: number = 8
 ): number {
+  // Only snap if this row is a uniform separator band (low variance).
+  // For photo-content rows (high variance), snapping causes wrong results.
+  const varThreshold = 50
+  if (variance[pos] > varThreshold) return pos
+
   const ref = brightness[pos]
   let left = pos
   let right = pos
-  while (left > 0 && Math.abs(brightness[left - 1] - ref) < tol) left--
+  // Limit snap radius to avoid drifting far on large uniform areas
+  const maxRadius = Math.max(5, Math.round(brightness.length * 0.015))
+  while (
+    left > 0 &&
+    pos - left < maxRadius &&
+    Math.abs(brightness[left - 1] - ref) < tol
+  )
+    left--
   while (
     right < brightness.length - 1 &&
+    right - pos < maxRadius &&
     Math.abs(brightness[right + 1] - ref) < tol
   )
     right++
@@ -68,8 +82,10 @@ export function detectHorizSeams(
   rows: number
 ): number[] {
   const brightness: number[] = []
+  const variance: number[] = []
   for (let y = 0; y < height; y++) {
     brightness.push(rowAverageBrightness(data, width, y, channels))
+    variance.push(rowVariance(data, width, y, channels))
   }
 
   const energy = new Array(height).fill(0)
@@ -93,7 +109,7 @@ export function detectHorizSeams(
         seamPos = y
       }
     }
-    seams.push(snapToGapCenter(seamPos, brightness))
+    seams.push(snapToGapCenter(seamPos, brightness, variance))
   }
   return seams
 }
@@ -106,8 +122,10 @@ export function detectVertSeams(
   cols: number
 ): number[] {
   const brightness: number[] = []
+  const variance: number[] = []
   for (let x = 0; x < width; x++) {
     brightness.push(colAverageBrightness(data, width, height, x, channels))
+    variance.push(colVariance(data, width, height, x, channels))
   }
 
   const energy = new Array(width).fill(0)
@@ -131,7 +149,7 @@ export function detectVertSeams(
         seamPos = x
       }
     }
-    seams.push(snapToGapCenter(seamPos, brightness))
+    seams.push(snapToGapCenter(seamPos, brightness, variance))
   }
   return seams
 }
