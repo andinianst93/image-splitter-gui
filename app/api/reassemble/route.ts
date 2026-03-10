@@ -4,13 +4,7 @@ import sharp from "sharp"
 export const maxDuration = 60
 
 interface CellInput {
-  id: string
-  row: number
-  col: number
   dataUrl: string
-  width: number
-  height: number
-  format: string
 }
 
 interface ReassembleRequest {

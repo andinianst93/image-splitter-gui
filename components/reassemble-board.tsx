@@ -133,7 +133,9 @@ export function ReassembleBoard({ result, quality }: ReassembleBoardProps) {
     setAssembled(null)
     try {
       const payload = {
-        cells: cells.slice(0, outRows * outCols),
+        cells: cells.slice(0, outRows * outCols).map((cell) => ({
+          dataUrl: cell.dataUrl,
+        })),
         rows: outRows,
         cols: outCols,
         quality: outQuality,
@@ -142,7 +144,7 @@ export function ReassembleBoard({ result, quality }: ReassembleBoardProps) {
 
       const payloadText = JSON.stringify(payload)
       const payloadBytes = new TextEncoder().encode(payloadText).length
-      if (payloadBytes > 4_000_000) {
+      if (payloadBytes > 12_000_000) {
         throw new Error(
           "Reassemble request too large. Reduce upscale/quality or use fewer output cells."
         )
