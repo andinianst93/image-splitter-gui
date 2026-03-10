@@ -11,6 +11,13 @@ function generateId(): string {
   return Math.random().toString(36).slice(2, 9)
 }
 
+function uniformSeams(dimension: number, count: number): number[] {
+  if (count <= 1) return []
+  return Array.from({ length: count - 1 }, (_, i) =>
+    Math.floor((dimension * (i + 1)) / count)
+  )
+}
+
 /** Ensures seams are integers, clamped to [1, dim-1], sorted, min-gap 1.
  *  Falls back to uniform split if the result is invalid. */
 function sanitizeSeams(
@@ -18,10 +25,7 @@ function sanitizeSeams(
   dimension: number,
   count: number
 ): number[] {
-  const uniform = () =>
-    Array.from({ length: count - 1 }, (_, i) =>
-      Math.round((dimension * (i + 1)) / count)
-    )
+  const uniform = () => uniformSeams(dimension, count)
 
   if (count <= 1) return []
 
@@ -116,7 +120,13 @@ export async function splitImage(
   let horizSeams: number[] = []
   let vertSeams: number[] = []
 
-  if (config.auto || rows === 0 || cols === 0) {
+  // Strict manual mode: no seam detection, pure uniform split.
+  if (!config.auto && rows > 0 && cols > 0) {
+    horizSeams = uniformSeams(imgHeight, rows)
+    vertSeams = uniformSeams(imgWidth, cols)
+  }
+
+  if ((config.auto || rows === 0 || cols === 0) && horizSeams.length === 0 && vertSeams.length === 0) {
     const raw = await getRawData(imageBuffer)
 
     // Always run separator detection to know if seam-snapping is safe
