@@ -74,12 +74,14 @@ async function processCell(
 
   if (config.trim) {
     const raw = await getRawData(cellBuffer)
+    const maxTrimDepth = config.auto ? 0.15 : 0.45
     const depths = calculateTrimDepths(
       raw.data,
       raw.width,
       raw.height,
       raw.channels,
-      config.trimTolerance
+      config.trimTolerance,
+      maxTrimDepth
     )
     if (depths) {
       cellBuffer = await sharp(cellBuffer)
