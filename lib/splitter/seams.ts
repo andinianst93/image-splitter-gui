@@ -214,6 +214,7 @@ export function autoDetectGridSize(
    */
   function countFromVariance(variances: number[], dimension: number): number {
     const minCell = Math.max(20, Math.floor(dimension * 0.05))
+    const maxBandWidth = Math.max(2, Math.floor(dimension * 0.03))
 
     // Find the "floor" variance: bottom 5th percentile (most uniform rows)
     const sorted = [...variances].sort((a, b) => a - b)
@@ -223,19 +224,24 @@ export function autoDetectGridSize(
     // This catches grey (var≈0), white (var≈0), and near-uniform rows (JPEG noise)
     const threshold = Math.max(p5 * 4, 8)
 
-    // A separator band must also be "much more uniform" than the median row
-    const p50 = sorted[Math.floor(sorted.length * 0.50)]
-    // If the most-uniform rows are similar to the median, there are no real separators
-    if (p5 * 6 >= p50) return 0 // no clear separators
-
     let bands = 0
-    let inBand = false
-    for (let i = minCell; i < dimension - minCell; i++) {
-      if (variances[i] <= threshold && !inBand) {
-        bands++
-        inBand = true
-      } else if (variances[i] > threshold) {
-        inBand = false
+    let runStart = -1
+
+    for (let i = minCell; i <= dimension - minCell; i++) {
+      const inside = i < dimension - minCell
+      const isCandidate = inside && variances[i] <= threshold
+
+      if (isCandidate && runStart < 0) {
+        runStart = i
+      }
+
+      if ((!isCandidate || !inside) && runStart >= 0) {
+        const runEnd = i - 1
+        const runWidth = runEnd - runStart + 1
+        if (runWidth <= maxBandWidth) {
+          bands++
+        }
+        runStart = -1
       }
     }
 
