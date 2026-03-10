@@ -136,20 +136,10 @@ export function calculateTrimDepths(
   // 15% depth cap
   const maxH = Math.floor(height * maxDepthFraction)
   const maxW = Math.floor(width * maxDepthFraction)
-  let trimTop = top > maxH ? 0 : top
-  let trimBottom = bottom > maxH ? 0 : bottom
-  let trimLeft = left > maxW ? 0 : left
-  let trimRight = right > maxW ? 0 : right
-
-  // Bilateral requirement
-  if (trimTop === 0 || trimBottom === 0) {
-    trimTop = 0
-    trimBottom = 0
-  }
-  if (trimLeft === 0 || trimRight === 0) {
-    trimLeft = 0
-    trimRight = 0
-  }
+  const trimTop = top > maxH ? 0 : top
+  const trimBottom = bottom > maxH ? 0 : bottom
+  const trimLeft = left > maxW ? 0 : left
+  const trimRight = right > maxW ? 0 : right
 
   // Minimum result 10×10
   const newW = width - trimLeft - trimRight

@@ -119,14 +119,9 @@ export async function splitImage(
   let { rows, cols } = config
   let horizSeams: number[] = []
   let vertSeams: number[] = []
+  let hasSeparators = false
 
-  // Strict manual mode: no seam detection, pure uniform split.
-  if (!config.auto && rows > 0 && cols > 0) {
-    horizSeams = uniformSeams(imgHeight, rows)
-    vertSeams = uniformSeams(imgWidth, cols)
-  }
-
-  if ((config.auto || rows === 0 || cols === 0) && horizSeams.length === 0 && vertSeams.length === 0) {
+  if (config.auto || rows === 0 || cols === 0 || (rows > 0 && cols > 0)) {
     const raw = await getRawData(imageBuffer)
 
     // Always run separator detection to know if seam-snapping is safe
@@ -136,7 +131,7 @@ export async function splitImage(
       raw.height,
       raw.channels
     )
-    const hasSeparators = detected.reliable
+    hasSeparators = detected.reliable
 
     if (rows === 0 || cols === 0) {
       if (!hasSeparators) {
@@ -149,7 +144,7 @@ export async function splitImage(
     // Only run seam detection when the image actually has separator bands.
     // For edge-to-edge collages (no separators) the ±25% energy search window
     // picks up photo-internal edges and produces completely wrong split positions.
-    if (config.auto && hasSeparators) {
+    if (hasSeparators) {
       if (rows > 1) {
         horizSeams = detectHorizSeams(
           raw.data,
@@ -183,16 +178,33 @@ export async function splitImage(
 
   const rowPositions = [0, ...horizSeams, imgHeight]
   const colPositions = [0, ...vertSeams, imgWidth]
+  // Aggressive cleanup for separator-based collages to avoid leftover border pixels.
+  const seamPadding = hasSeparators && !config.trim ? 6 : 0
 
   const format: "png" | "jpeg" = config.quality === 0 ? "png" : "jpeg"
   const cells: Cell[] = []
 
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
-      const y = rowPositions[r]
-      const h = rowPositions[r + 1] - rowPositions[r]
-      const x = colPositions[c]
-      const w = colPositions[c + 1] - colPositions[c]
+      const rawTop = rowPositions[r]
+      const rawBottom = rowPositions[r + 1]
+      const rawLeft = colPositions[c]
+      const rawRight = colPositions[c + 1]
+
+      const maxPadY = Math.max(0, Math.floor((rawBottom - rawTop - 1) / 2))
+      const maxPadX = Math.max(0, Math.floor((rawRight - rawLeft - 1) / 2))
+      const padY = Math.min(seamPadding, maxPadY)
+      const padX = Math.min(seamPadding, maxPadX)
+
+      const y0 = rawTop + padY
+      const y1 = rawBottom - padY
+      const x0 = rawLeft + padX
+      const x1 = rawRight - padX
+
+      const y = Math.max(0, y0)
+      const x = Math.max(0, x0)
+      const h = Math.max(1, y1 - y)
+      const w = Math.max(1, x1 - x)
 
       const { buffer, width, height } = await processCell(
         imageBuffer,

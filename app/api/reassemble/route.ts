@@ -54,9 +54,9 @@ export async function POST(req: NextRequest) {
     const maxWidth = widths[widths.length - 1]
     const minHeight = heights[0]
     const maxHeight = heights[heights.length - 1]
-    const slotWidth = widths[Math.floor(widths.length / 2)]
-    const slotHeight = heights[Math.floor(heights.length / 2)]
-    const nearUniform = maxWidth - minWidth <= 1 && maxHeight - minHeight <= 1
+    const slotWidth = maxWidth
+    const slotHeight = maxHeight
+    const nearUniform = maxWidth - minWidth <= 2 && maxHeight - minHeight <= 2
 
     // Accumulate x/y offsets
     const xOffsets = [0]

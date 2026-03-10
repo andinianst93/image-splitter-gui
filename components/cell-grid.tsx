@@ -163,12 +163,15 @@ export function CellGrid({ result, quality }: CellGridProps) {
               key={cell.id}
               className="group relative overflow-hidden border-border bg-card p-0 rounded-md"
             >
-              <div className="relative w-full aspect-square">
+              <div
+                className="relative w-full"
+                style={{ aspectRatio: `${cell.width} / ${cell.height}` }}
+              >
                 <Image
                   src={cell.dataUrl}
                   alt={`Cell ${cell.row + 1}×${cell.col + 1}`}
                   fill
-                  className="object-contain"
+                  className="object-cover"
                   sizes="(max-width: 768px) 50vw, 20vw"
                   unoptimized
                 />
