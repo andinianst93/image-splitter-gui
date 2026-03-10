@@ -16,8 +16,19 @@ export async function detectGrid(
   mimeType: string = "image/jpeg"
 ): Promise<GridDetectionResult> {
   if (config.useAI) {
-    if (!process.env.MOONSHOT_API_KEY) {
-      return { rows: config.rows, cols: config.cols, method: "algo", aiError: "MOONSHOT_API_KEY not set" }
+    const hasApiKey =
+      !!process.env.MOONSHOT_API_KEY ||
+      !!process.env.KIMI_API_KEY ||
+      !!process.env.KIMI_CODE_API_KEY
+
+    if (!hasApiKey) {
+      return {
+        rows: config.rows,
+        cols: config.cols,
+        method: "algo",
+        aiError:
+          "Kimi API key not set (MOONSHOT_API_KEY / KIMI_API_KEY / KIMI_CODE_API_KEY)",
+      }
     }
 
     const response = await analyzeGrid(imageBuffer, mimeType)
@@ -27,7 +38,8 @@ export async function detectGrid(
         rows: response.result.rows,
         cols: response.result.cols,
         confidence: response.result.confidence,
-        hasSeparator: response.result.hasSeperator,
+        hasSeparator:
+          response.result.hasSeparator ?? response.result.hasSeperator,
         method: "ai",
       }
     }

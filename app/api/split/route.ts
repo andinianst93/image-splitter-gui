@@ -52,11 +52,13 @@ export async function POST(req: NextRequest) {
           auto: keepSeams,
         }
       } else if (detection.aiError) {
-        // AI failed with no grid dimensions — tell user to use manual mode
-        return NextResponse.json(
-          { error: `Kimi AI failed: ${detection.aiError}. Switch to Manual mode and specify rows & cols.` },
-          { status: 422 }
-        )
+        // AI failed: keep auto mode and let algorithmic detection handle fallback.
+        // We still return aiError in response so UI can show diagnostics.
+        finalConfig = {
+          ...finalConfig,
+          rows: config.rows,
+          cols: config.cols,
+        }
       }
     }
 

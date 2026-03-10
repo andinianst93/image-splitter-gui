@@ -4,7 +4,8 @@ export interface KimiGridResult {
   rows: number
   cols: number
   confidence: number
-  hasSeperator: boolean
+  hasSeperator?: boolean
+  hasSeparator?: boolean
   separatorColor?: string
 }
 
@@ -22,9 +23,15 @@ export async function analyzeGrid(
   imageBuffer: Buffer,
   mimeType: string
 ): Promise<KimiResponse> {
-  const apiKey = process.env.MOONSHOT_API_KEY
+  const apiKey =
+    process.env.MOONSHOT_API_KEY ||
+    process.env.KIMI_API_KEY ||
+    process.env.KIMI_CODE_API_KEY
   if (!apiKey) {
-    return { ok: false, error: { reason: "MOONSHOT_API_KEY not set" } }
+    return {
+      ok: false,
+      error: { reason: "Kimi API key not set (MOONSHOT_API_KEY / KIMI_API_KEY / KIMI_CODE_API_KEY)" },
+    }
   }
 
   // Get image dimensions to include in the prompt for better reasoning
