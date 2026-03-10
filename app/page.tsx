@@ -1,16 +1,16 @@
-"use client"
+"use client";
 
-import { useState, useCallback } from "react"
-import { toast } from "sonner"
-import { Scissors, ArrowLeft } from "lucide-react"
-import { UploadZone } from "@/components/upload-zone"
-import { SplitOptions } from "@/components/split-options"
-import { CellGrid } from "@/components/cell-grid"
-import { ThemeToggle } from "@/components/theme-toggle"
-import { Progress } from "@/components/ui/progress"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import type { SplitConfig, SplitResult } from "@/types"
+import { useState, useCallback } from "react";
+import { toast } from "sonner";
+import { Scissors, ArrowLeft } from "lucide-react";
+import { UploadZone } from "@/components/upload-zone";
+import { SplitOptions } from "@/components/split-options";
+import { CellGrid } from "@/components/cell-grid";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import type { SplitConfig, SplitResult } from "@/types";
 
 const DEFAULT_CONFIG: SplitConfig = {
   rows: 0,
@@ -19,100 +19,100 @@ const DEFAULT_CONFIG: SplitConfig = {
   trim: true,
   trimTolerance: 60,
   quality: 0,
-  scale: 1,
-}
+  scale: 0,
+};
 
 export default function Home() {
-  const [file, setFile] = useState<File | null>(null)
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
-  const [config, setConfig] = useState<SplitConfig>(DEFAULT_CONFIG)
-  const [result, setResult] = useState<SplitResult | null>(null)
-  const [isProcessing, setIsProcessing] = useState(false)
-  const [progress, setProgress] = useState(0)
-  const [stage, setStage] = useState("")
+  const [file, setFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [config, setConfig] = useState<SplitConfig>(DEFAULT_CONFIG);
+  const [result, setResult] = useState<SplitResult | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [stage, setStage] = useState("");
 
   const handleFileSelect = useCallback((f: File) => {
-    setFile(f)
-    setResult(null)
+    setFile(f);
+    setResult(null);
     setPreviewUrl((prev) => {
-      if (prev) URL.revokeObjectURL(prev)
-      return URL.createObjectURL(f)
-    })
-  }, [])
+      if (prev) URL.revokeObjectURL(prev);
+      return URL.createObjectURL(f);
+    });
+  }, []);
 
   const handleClear = useCallback(() => {
-    setFile(null)
-    setResult(null)
+    setFile(null);
+    setResult(null);
     setPreviewUrl((prev) => {
-      if (prev) URL.revokeObjectURL(prev)
-      return null
-    })
-  }, [])
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
+  }, []);
 
   const handleBack = useCallback(() => {
-    setResult(null)
-  }, [])
+    setResult(null);
+  }, []);
 
   const handleSplit = useCallback(async () => {
-    if (!file) return
-    setIsProcessing(true)
-    setResult(null)
-    setProgress(15)
-    setStage("Uploading…")
+    if (!file) return;
+    setIsProcessing(true);
+    setResult(null);
+    setProgress(15);
+    setStage("Uploading…");
 
     try {
-      const isAutoMode = config.rows === 0 && config.cols === 0
-      const formData = new FormData()
-      formData.append("file", file)
-      formData.append("config", JSON.stringify(config))
+      const isAutoMode = config.rows === 0 && config.cols === 0;
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("config", JSON.stringify(config));
 
-      setProgress(35)
-      setStage(isAutoMode ? "Analyzing with Kimi AI…" : "Detecting grid…")
+      setProgress(35);
+      setStage(isAutoMode ? "Analyzing with Kimi AI…" : "Detecting grid…");
 
       const res = await fetch("/api/split", {
         method: "POST",
         body: formData,
-      })
+      });
 
-      setProgress(75)
-      setStage("Processing cells…")
+      setProgress(75);
+      setStage("Processing cells…");
 
       if (!res.ok) {
-        let message = "Split failed"
+        let message = "Split failed";
         try {
-          const err = await res.json()
-          message = err.error ?? message
+          const err = await res.json();
+          message = err.error ?? message;
         } catch {
-          const text = await res.text().catch(() => "")
-          if (text) message = text.slice(0, 200)
+          const text = await res.text().catch(() => "");
+          if (text) message = text.slice(0, 200);
         }
-        throw new Error(message)
+        throw new Error(message);
       }
 
-      const data: SplitResult = await res.json()
-      setProgress(100)
-      setStage("Done")
-      setResult(data)
+      const data: SplitResult = await res.json();
+      setProgress(100);
+      setStage("Done");
+      setResult(data);
 
       if (data.aiError) {
         toast.warning("Kimi AI failed — check server logs", {
           description: data.aiError,
           duration: 8000,
-        })
+        });
       }
       toast.success(
-        `Split into ${data.cells.length} cells · ${data.grid.rows}×${data.grid.cols} · ${data.method === "ai" ? "Kimi AI" : "algorithm"}`
-      )
+        `Split into ${data.cells.length} cells · ${data.grid.rows}×${data.grid.cols} · ${data.method === "ai" ? "Kimi AI" : "algorithm"}`,
+      );
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Something went wrong")
+      toast.error(err instanceof Error ? err.message : "Something went wrong");
     } finally {
-      setIsProcessing(false)
+      setIsProcessing(false);
       setTimeout(() => {
-        setProgress(0)
-        setStage("")
-      }, 600)
+        setProgress(0);
+        setStage("");
+      }, 600);
     }
-  }, [file, config])
+  }, [file, config]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -132,7 +132,7 @@ export default function Home() {
               </Badge>
             </div>
             <p className="mt-2 pl-12 text-sm text-muted-foreground">
-              Split collage images into individual cells — AI-powered or algorithmic
+              Split collage images into individual cells
             </p>
           </div>
           <ThemeToggle />
@@ -152,8 +152,12 @@ export default function Home() {
               {isProcessing && (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">{stage}</span>
-                    <span className="text-sm text-muted-foreground/60">{progress}%</span>
+                    <span className="text-sm text-muted-foreground">
+                      {stage}
+                    </span>
+                    <span className="text-sm text-muted-foreground/60">
+                      {progress}%
+                    </span>
                   </div>
                   <Progress
                     value={progress}
@@ -189,13 +193,26 @@ export default function Home() {
                 Back
               </Button>
               <span className="text-sm text-muted-foreground">
-                {file?.name} · {result.cells.length} cells · {result.grid.rows}×{result.grid.cols}
+                {file?.name} · {result.cells.length} cells · {result.grid.rows}×
+                {result.grid.cols}
               </span>
             </div>
             <CellGrid result={result} quality={config.quality} />
           </div>
         )}
       </div>
+
+      {/* Footer */}
+      <footer className="mt-16 border-t border-border py-6">
+        <div className="mx-auto max-w-5xl px-4 sm:px-6 flex flex-col items-center gap-1">
+          <p className="text-xs text-muted-foreground/50">
+            Property of Stevie Kaligis
+          </p>
+          <p className="text-xs text-muted-foreground/40">
+            Developed by Andini Anissa
+          </p>
+        </div>
+      </footer>
     </div>
-  )
+  );
 }

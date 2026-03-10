@@ -6,7 +6,7 @@ export interface SplitConfig {
   trim: boolean
   trimTolerance: number // default 60
   quality: number       // 0 = PNG, 1-100 = JPEG
-  scale: number         // 1.0 = no upscale
+  scale: number         // 0 = original, 1080/2048/4096 = target px on longest side
 }
 
 export interface Cell {

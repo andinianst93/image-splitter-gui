@@ -205,23 +205,22 @@ export function SplitOptions({
         </div>
 
         {/* Scale */}
-        <div className="space-y-2.5">
-          <div className="flex items-center justify-between">
-            <Label className="text-sm text-muted-foreground">Upscale</Label>
-            <span className="text-sm text-muted-foreground">
-              {config.scale === 1 ? "None" : `${config.scale}×`}
-            </span>
-          </div>
-          <Slider
-            min={1}
-            max={4}
-            step={0.5}
-            value={[config.scale]}
-            onValueChange={([v]) => onChange({ ...config, scale: v })}
-          />
-          <div className="flex justify-between text-xs text-muted-foreground/50">
-            <span>1×</span>
-            <span>4×</span>
+        <div className="space-y-2">
+          <Label className="text-sm text-muted-foreground">Upscale</Label>
+          <div className="grid grid-cols-4 gap-1.5">
+            {([0, 1080, 2048, 4096] as const).map((v) => (
+              <button
+                key={v}
+                onClick={() => onChange({ ...config, scale: v })}
+                className={`rounded-md border px-2 py-1.5 text-xs font-medium transition-colors ${
+                  config.scale === v
+                    ? "border-foreground bg-foreground text-background"
+                    : "border-border bg-card text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {v === 0 ? "Original" : v === 1080 ? "1080p" : v === 2048 ? "2K" : "4K"}
+              </button>
+            ))}
           </div>
         </div>
 
