@@ -74,14 +74,12 @@ async function processCell(
 
   if (config.trim) {
     const raw = await getRawData(cellBuffer)
-    const maxTrimDepth = config.auto ? 0.15 : 0.45
     const depths = calculateTrimDepths(
       raw.data,
       raw.width,
       raw.height,
       raw.channels,
-      config.trimTolerance,
-      maxTrimDepth
+      config.trimTolerance
     )
     if (depths) {
       cellBuffer = await sharp(cellBuffer)
@@ -123,6 +121,7 @@ export async function splitImage(
   const imgHeight = meta.height!
 
   let { rows, cols } = config
+  const isManualMode = !config.auto && rows > 0 && cols > 0
   let horizSeams: number[] = []
   let vertSeams: number[] = []
   let hasSeparators = false
@@ -185,7 +184,12 @@ export async function splitImage(
   const rowPositions = [0, ...horizSeams, imgHeight]
   const colPositions = [0, ...vertSeams, imgWidth]
   // Aggressive cleanup for separator-based collages to avoid leftover border pixels.
-  const seamPadding = hasSeparators && !config.trim ? 6 : 0
+  const seamPadding = isManualMode ? 6 : hasSeparators && !config.trim ? 6 : 0
+  const processConfig: SplitConfig = {
+    ...config,
+    // Manual mode uses uniform seam padding; per-cell trim causes uneven cell sizes.
+    trim: isManualMode ? false : config.trim,
+  }
 
   const format: "png" | "jpeg" = config.quality === 0 ? "png" : "jpeg"
   const cells: Cell[] = []
@@ -218,7 +222,7 @@ export async function splitImage(
         y,
         w,
         h,
-        config
+        processConfig
       )
 
       let outputBuffer: Buffer
