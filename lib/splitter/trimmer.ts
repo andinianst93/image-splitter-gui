@@ -4,6 +4,9 @@ interface PixelColor {
   b: number
 }
 
+const BORDER_EDGE_MATCH_REQUIRED = 0.97
+const TRIM_WALK_MATCH_REQUIRED = 0.985
+
 function getPixel(
   data: Buffer,
   width: number,
@@ -73,7 +76,10 @@ function isRowUniform(
   borderColor: PixelColor,
   tol: number
 ): boolean {
-  return rowMatchRatio(data, width, y, channels, borderColor, tol) >= 1
+  return (
+    rowMatchRatio(data, width, y, channels, borderColor, tol) >=
+    BORDER_EDGE_MATCH_REQUIRED
+  )
 }
 
 function isColUniform(
@@ -85,7 +91,10 @@ function isColUniform(
   borderColor: PixelColor,
   tol: number
 ): boolean {
-  return colMatchRatio(data, width, height, x, channels, borderColor, tol) >= 1
+  return (
+    colMatchRatio(data, width, height, x, channels, borderColor, tol) >=
+    BORDER_EDGE_MATCH_REQUIRED
+  )
 }
 
 function detectBorderColor(
@@ -138,12 +147,11 @@ export function calculateTrimDepths(
   const borderColor = detectBorderColor(data, width, height, channels, tol)
   if (!borderColor) return null
 
-  const edgeMatchThreshold = 0.985
-
   let top = 0
   while (
     top < height &&
-    rowMatchRatio(data, width, top, channels, borderColor, tol) >= edgeMatchThreshold
+    rowMatchRatio(data, width, top, channels, borderColor, tol) >=
+      TRIM_WALK_MATCH_REQUIRED
   )
     top++
 
@@ -157,7 +165,7 @@ export function calculateTrimDepths(
       channels,
       borderColor,
       tol
-    ) >= edgeMatchThreshold
+    ) >= TRIM_WALK_MATCH_REQUIRED
   )
     bottom++
 
@@ -165,7 +173,7 @@ export function calculateTrimDepths(
   while (
     left < width &&
     colMatchRatio(data, width, height, left, channels, borderColor, tol) >=
-      edgeMatchThreshold
+      TRIM_WALK_MATCH_REQUIRED
   )
     left++
 
@@ -180,7 +188,7 @@ export function calculateTrimDepths(
       channels,
       borderColor,
       tol
-    ) >= edgeMatchThreshold
+    ) >= TRIM_WALK_MATCH_REQUIRED
   )
     right++
 
