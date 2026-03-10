@@ -3,6 +3,7 @@ import {
   detectHorizSeams,
   detectVertSeams,
   autoDetectGridSize,
+  estimateGridFromEnergy,
 } from "./seams"
 import { calculateTrimDepths } from "./trimmer"
 import type { Cell, SplitConfig } from "@/types"
@@ -139,11 +140,19 @@ export async function splitImage(
     hasSeparators = detected.reliable
 
     if (rows === 0 || cols === 0) {
-      if (!hasSeparators) {
-        throw new Error("no_separator_detected")
+      if (hasSeparators) {
+        if (rows === 0) rows = detected.rows
+        if (cols === 0) cols = detected.cols
+      } else {
+        const estimated = estimateGridFromEnergy(
+          raw.data,
+          raw.width,
+          raw.height,
+          raw.channels
+        )
+        if (rows === 0) rows = estimated.rows
+        if (cols === 0) cols = estimated.cols
       }
-      if (rows === 0) rows = detected.rows
-      if (cols === 0) cols = detected.cols
     }
 
     // Only run seam detection when the image actually has separator bands.

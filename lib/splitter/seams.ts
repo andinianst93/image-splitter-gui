@@ -271,3 +271,69 @@ export function autoDetectGridSize(
     reliable,
   }
 }
+
+function estimateAxisCountFromEnergy(energy: number[], dimension: number): number {
+  const smoothed = boxFilter(energy, 5)
+  const mean = smoothed.reduce((a, b) => a + b, 0) / Math.max(1, smoothed.length)
+  const maxCount = Math.max(2, Math.min(6, Math.floor(dimension / 140)))
+
+  let bestCount = 2
+  let bestScore = -Infinity
+
+  for (let count = 2; count <= maxCount; count++) {
+    const window = Math.max(3, Math.floor(dimension * 0.08))
+    let peakSum = 0
+
+    for (let i = 1; i < count; i++) {
+      const expected = Math.round((dimension * i) / count)
+      const start = Math.max(1, expected - window)
+      const end = Math.min(dimension - 2, expected + window)
+      let localMax = 0
+      for (let p = start; p <= end; p++) {
+        if (smoothed[p] > localMax) localMax = smoothed[p]
+      }
+      peakSum += localMax
+    }
+
+    const avgPeak = peakSum / Math.max(1, count - 1)
+    const normalized = avgPeak / Math.max(0.001, mean)
+    const score = normalized - count * 0.04
+
+    if (score > bestScore) {
+      bestScore = score
+      bestCount = count
+    }
+  }
+
+  return bestCount
+}
+
+export function estimateGridFromEnergy(
+  data: Buffer,
+  width: number,
+  height: number,
+  channels: number
+): { rows: number; cols: number } {
+  const rowBrightness: number[] = []
+  for (let y = 0; y < height; y++) {
+    rowBrightness.push(rowAverageBrightness(data, width, y, channels))
+  }
+  const rowEnergy = new Array(height).fill(0)
+  for (let y = 0; y < height - 1; y++) {
+    rowEnergy[y] = Math.abs(rowBrightness[y] - rowBrightness[y + 1])
+  }
+
+  const colBrightness: number[] = []
+  for (let x = 0; x < width; x++) {
+    colBrightness.push(colAverageBrightness(data, width, height, x, channels))
+  }
+  const colEnergy = new Array(width).fill(0)
+  for (let x = 0; x < width - 1; x++) {
+    colEnergy[x] = Math.abs(colBrightness[x] - colBrightness[x + 1])
+  }
+
+  return {
+    rows: estimateAxisCountFromEnergy(rowEnergy, height),
+    cols: estimateAxisCountFromEnergy(colEnergy, width),
+  }
+}
