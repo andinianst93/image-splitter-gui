@@ -26,10 +26,15 @@ export async function POST(req: NextRequest) {
     let method: "ai" | "algo" = "algo"
     let aiConfidence: number | undefined
     let aiError: string | undefined
-    let finalConfig = { ...config }
+    const isAutoMode = config.rows === 0 || config.cols === 0
+    let finalConfig = {
+      ...config,
+      // Manual mode should use strict uniform slicing only.
+      auto: isAutoMode ? config.auto : false,
+    }
 
     // Auto mode: always try Kimi AI to detect grid size
-    if (config.rows === 0 || config.cols === 0) {
+    if (isAutoMode) {
       const detection = await detectGrid(buffer, { ...config, useAI: true }, mimeType)
 
       method = detection.method

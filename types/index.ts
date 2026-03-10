@@ -2,6 +2,7 @@ export interface SplitConfig {
   rows: number          // 0 = auto-detect
   cols: number          // 0 = auto-detect
   auto: boolean         // use seam detection for boundaries
+  useAI?: boolean
   trim: boolean
   trimTolerance: number // default 60
   quality: number       // 0 = PNG, 1-100 = JPEG

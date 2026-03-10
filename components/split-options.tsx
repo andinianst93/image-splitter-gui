@@ -41,7 +41,7 @@ export function SplitOptions({
         ...config,
         rows: config.rows || 2,
         cols: config.cols || 2,
-        auto: true,
+        auto: false,
       })
     }
   }
@@ -104,7 +104,11 @@ export function SplitOptions({
                 max={20}
                 value={config.rows || ""}
                 onChange={(e) =>
-                  onChange({ ...config, rows: parseInt(e.target.value) || 1 })
+                  onChange({
+                    ...config,
+                    rows: parseInt(e.target.value) || 1,
+                    auto: false,
+                  })
                 }
                 className="h-9 text-sm"
               />
@@ -117,7 +121,11 @@ export function SplitOptions({
                 max={20}
                 value={config.cols || ""}
                 onChange={(e) =>
-                  onChange({ ...config, cols: parseInt(e.target.value) || 1 })
+                  onChange({
+                    ...config,
+                    cols: parseInt(e.target.value) || 1,
+                    auto: false,
+                  })
                 }
                 className="h-9 text-sm"
               />
