@@ -119,39 +119,45 @@ export async function splitImage(
   if (config.auto || rows === 0 || cols === 0) {
     const raw = await getRawData(imageBuffer)
 
+    // Always run separator detection to know if seam-snapping is safe
+    const detected = autoDetectGridSize(
+      raw.data,
+      raw.width,
+      raw.height,
+      raw.channels
+    )
+    const hasSeparators = detected.reliable
+
     if (rows === 0 || cols === 0) {
-      const detected = autoDetectGridSize(
-        raw.data,
-        raw.width,
-        raw.height,
-        raw.channels
-      )
-      if (!detected.reliable) {
-        throw new Error(
-          "no_separator_detected"
-        )
+      if (!hasSeparators) {
+        throw new Error("no_separator_detected")
       }
       if (rows === 0) rows = detected.rows
       if (cols === 0) cols = detected.cols
     }
 
-    if (config.auto && rows > 1) {
-      horizSeams = detectHorizSeams(
-        raw.data,
-        raw.width,
-        raw.height,
-        raw.channels,
-        rows
-      )
-    }
-    if (config.auto && cols > 1) {
-      vertSeams = detectVertSeams(
-        raw.data,
-        raw.width,
-        raw.height,
-        raw.channels,
-        cols
-      )
+    // Only run seam detection when the image actually has separator bands.
+    // For edge-to-edge collages (no separators) the ±25% energy search window
+    // picks up photo-internal edges and produces completely wrong split positions.
+    if (config.auto && hasSeparators) {
+      if (rows > 1) {
+        horizSeams = detectHorizSeams(
+          raw.data,
+          raw.width,
+          raw.height,
+          raw.channels,
+          rows
+        )
+      }
+      if (cols > 1) {
+        vertSeams = detectVertSeams(
+          raw.data,
+          raw.width,
+          raw.height,
+          raw.channels,
+          cols
+        )
+      }
     }
   }
 

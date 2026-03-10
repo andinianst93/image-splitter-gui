@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useEffect } from "react"
+import { useState, useCallback } from "react"
 import { toast } from "sonner"
 import { Scissors } from "lucide-react"
 import { UploadZone } from "@/components/upload-zone"
@@ -9,14 +9,12 @@ import { CellGrid } from "@/components/cell-grid"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
-import { useKimiUsage } from "@/hooks/use-kimi-usage"
 import type { SplitConfig, SplitResult } from "@/types"
 
 const DEFAULT_CONFIG: SplitConfig = {
   rows: 0,
   cols: 0,
   auto: true,
-  useAI: true,
   trim: true,
   trimTolerance: 60,
   quality: 0,
@@ -31,18 +29,6 @@ export default function Home() {
   const [isProcessing, setIsProcessing] = useState(false)
   const [progress, setProgress] = useState(0)
   const [stage, setStage] = useState("")
-  const { remaining, isLimitReached, increment: incrementAI } = useKimiUsage()
-
-  // Auto-disable AI when daily limit is reached
-  useEffect(() => {
-    if (isLimitReached && config.useAI) {
-      setConfig((c) => ({ ...c, useAI: false }))
-      toast.warning("Kimi AI daily limit reached (3/3). Switched to algorithm.", {
-        duration: 5000,
-      })
-    }
-  }, [isLimitReached]) // eslint-disable-line react-hooks/exhaustive-deps
-
   const handleFileSelect = useCallback((f: File) => {
     setFile(f)
     setResult(null)
@@ -69,16 +55,13 @@ export default function Home() {
     setStage("Uploading…")
 
     try {
-      // Increment AI usage counter before the request
-      const willUseAI = config.useAI && !isLimitReached
-      if (willUseAI) incrementAI()
-
+      const isAutoMode = config.rows === 0 && config.cols === 0
       const formData = new FormData()
       formData.append("file", file)
-      formData.append("config", JSON.stringify({ ...config, useAI: willUseAI }))
+      formData.append("config", JSON.stringify(config))
 
       setProgress(35)
-      setStage(willUseAI ? "Analyzing with Kimi AI…" : "Detecting grid…")
+      setStage(isAutoMode ? "Analyzing with Kimi AI…" : "Detecting grid…")
 
       const res = await fetch("/api/split", {
         method: "POST",
@@ -183,8 +166,6 @@ export default function Home() {
               onSplit={handleSplit}
               isProcessing={isProcessing}
               hasFile={!!file}
-              aiRemaining={remaining}
-              aiLimitReached={isLimitReached}
             />
           </aside>
         </div>

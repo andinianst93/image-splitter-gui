@@ -7,7 +7,6 @@ import { Label } from "@/components/ui/label"
 import { Slider } from "@/components/ui/slider"
 import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import {
   Tooltip,
@@ -23,8 +22,6 @@ interface SplitOptionsProps {
   onSplit: () => void
   isProcessing: boolean
   hasFile: boolean
-  aiRemaining: number
-  aiLimitReached: boolean
 }
 
 export function SplitOptions({
@@ -33,8 +30,6 @@ export function SplitOptions({
   onSplit,
   isProcessing,
   hasFile,
-  aiRemaining,
-  aiLimitReached,
 }: SplitOptionsProps) {
   const mode = config.rows === 0 && config.cols === 0 ? "auto" : "manual"
 
@@ -54,17 +49,9 @@ export function SplitOptions({
   return (
     <Card className="border-border bg-card">
       <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-base font-semibold text-foreground">
-            Options
-          </CardTitle>
-          {config.useAI && (
-            <Badge variant="secondary" className="gap-1 text-xs">
-              <Zap className="h-2.5 w-2.5" />
-              AI
-            </Badge>
-          )}
-        </div>
+        <CardTitle className="text-base font-semibold text-foreground">
+          Options
+        </CardTitle>
       </CardHeader>
 
       <CardContent className="space-y-5">
@@ -96,14 +83,13 @@ export function SplitOptions({
         {/* Auto mode hint */}
         {mode === "auto" && (
           <p className="text-xs text-muted-foreground/70 bg-muted rounded-md px-3 py-2 leading-relaxed">
-            Auto detects separator lines between cells. For edge-to-edge collages (no separators), use{" "}
+            Kimi AI detects the grid automatically. For edge-to-edge collages (no borders), use{" "}
             <button
               className="underline underline-offset-2 cursor-pointer"
               onClick={() => setMode("manual")}
             >
               Manual mode
-            </button>{" "}
-            or enable Kimi AI.
+            </button>.
           </p>
         )}
 
@@ -138,44 +124,6 @@ export function SplitOptions({
             </div>
           </div>
         )}
-
-        <Separator />
-
-        {/* Use AI */}
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Label
-                className={`text-sm cursor-pointer ${aiLimitReached ? "text-muted-foreground/50" : "text-foreground"}`}
-              >
-                Use Kimi AI
-              </Label>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Info className="h-3.5 w-3.5 text-muted-foreground/60 cursor-help" />
-                </TooltipTrigger>
-                <TooltipContent side="left" className="max-w-44 text-xs">
-                  Uses Kimi K2.5 vision to detect grid structure. Falls back to
-                  algorithm if unavailable.
-                </TooltipContent>
-              </Tooltip>
-            </div>
-            <Switch
-              checked={config.useAI && !aiLimitReached}
-              onCheckedChange={(v) => !aiLimitReached && onChange({ ...config, useAI: v })}
-              disabled={aiLimitReached}
-            />
-          </div>
-          {aiLimitReached ? (
-            <p className="text-xs text-destructive/80">
-              Daily limit reached (3/3) · resets tomorrow
-            </p>
-          ) : (
-            <p className="text-xs text-muted-foreground/50">
-              {aiRemaining}/3 uses remaining today
-            </p>
-          )}
-        </div>
 
         {/* Seam detection — auto mode only */}
         {mode === "auto" && (

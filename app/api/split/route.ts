@@ -28,8 +28,9 @@ export async function POST(req: NextRequest) {
     let aiError: string | undefined
     let finalConfig = { ...config }
 
-    if (config.useAI || config.rows === 0 || config.cols === 0) {
-      const detection = await detectGrid(buffer, config, mimeType)
+    // Auto mode: always try Kimi AI to detect grid size
+    if (config.rows === 0 || config.cols === 0) {
+      const detection = await detectGrid(buffer, { ...config, useAI: true }, mimeType)
 
       method = detection.method
       aiConfidence = detection.confidence
@@ -37,8 +38,6 @@ export async function POST(req: NextRequest) {
 
       if (detection.method === "ai") {
         // Only run seam detection if AI confirmed there are visible separators.
-        // For edge-to-edge collages (no separators) seam detection snaps to
-        // photo-content edges and produces wrong splits.
         const keepSeams = detection.hasSeparator === true
         finalConfig = {
           ...config,
@@ -46,15 +45,13 @@ export async function POST(req: NextRequest) {
           cols: detection.cols,
           auto: keepSeams,
         }
-      } else if (detection.aiError && (finalConfig.rows === 0 || finalConfig.cols === 0)) {
-        // AI was requested but failed, and we have no grid dimensions to fall back on.
-        // Return early with a clear error rather than letting autoDetectGridSize fail silently.
+      } else if (detection.aiError) {
+        // AI failed with no grid dimensions — tell user to use manual mode
         return NextResponse.json(
           { error: `Kimi AI failed: ${detection.aiError}. Switch to Manual mode and specify rows & cols.` },
           { status: 422 }
         )
       }
-      // If algo fallback and rows/cols are provided, proceed with those dimensions
     }
 
     const { cells, grid } = await splitImage(buffer, finalConfig)

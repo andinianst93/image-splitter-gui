@@ -79,10 +79,7 @@ export async function POST(req: NextRequest) {
         const c = i % cols
         // Resize cell to match its slot dimensions
         const resized = await sharp(cell.buf)
-          .resize(colWidths[c], rowHeights[r], {
-            fit: "contain",
-            background: { r: 0, g: 0, b: 0, alpha: 0 },
-          })
+          .resize(colWidths[c], rowHeights[r], { fit: "fill" })
           .toBuffer()
         return {
           input: resized,

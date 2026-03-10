@@ -45,33 +45,38 @@ function boxFilter(arr: number[], radius: number): number[] {
 
 function snapToGapCenter(
   pos: number,
-  brightness: number[],
-  variance: number[],
-  tol: number = 8
+  smoothedEnergy: number[]
 ): number {
-  // Only snap if this row is a uniform separator band (low variance).
-  // For photo-content rows (high variance), snapping causes wrong results.
-  const varThreshold = 50
-  if (variance[pos] > varThreshold) return pos
+  // Find the widest band of near-zero energy (= uniform separator) within reach.
+  // Uses raw energy profile so JPEG-noisy separators (energy ≈ 0) are detected correctly.
+  const sorted = [...smoothedEnergy].sort((a, b) => a - b)
+  const p10 = sorted[Math.floor(sorted.length * 0.10)]
+  const threshold = Math.max(p10 * 4, 0.5)
 
-  const ref = brightness[pos]
-  let left = pos
-  let right = pos
-  // Limit snap radius to avoid drifting far on large uniform areas
-  const maxRadius = Math.max(5, Math.round(brightness.length * 0.015))
-  while (
-    left > 0 &&
-    pos - left < maxRadius &&
-    Math.abs(brightness[left - 1] - ref) < tol
-  )
-    left--
-  while (
-    right < brightness.length - 1 &&
-    right - pos < maxRadius &&
-    Math.abs(brightness[right + 1] - ref) < tol
-  )
-    right++
-  return Math.round((left + right) / 2)
+  const maxRadius = Math.max(15, Math.round(smoothedEnergy.length * 0.05))
+  const lo = Math.max(0, pos - maxRadius)
+  const hi = Math.min(smoothedEnergy.length - 1, pos + maxRadius)
+
+  let bestStart = -1
+  let bestWidth = 0
+  let i = lo
+  while (i <= hi) {
+    if (smoothedEnergy[i] <= threshold) {
+      let j = i
+      while (j <= hi && smoothedEnergy[j] <= threshold) j++
+      const w = j - i
+      if (w > bestWidth) {
+        bestWidth = w
+        bestStart = i
+      }
+      i = j
+    } else {
+      i++
+    }
+  }
+
+  if (bestWidth === 0) return pos
+  return Math.round(bestStart + (bestWidth - 1) / 2)
 }
 
 export function detectHorizSeams(
@@ -82,22 +87,20 @@ export function detectHorizSeams(
   rows: number
 ): number[] {
   const brightness: number[] = []
-  const variance: number[] = []
   for (let y = 0; y < height; y++) {
     brightness.push(rowAverageBrightness(data, width, y, channels))
-    variance.push(rowVariance(data, width, y, channels))
   }
 
-  const energy = new Array(height).fill(0)
+  const rawEnergy = new Array(height).fill(0)
   for (let y = 0; y < height - 1; y++) {
-    energy[y] = Math.abs(brightness[y] - brightness[y + 1])
+    rawEnergy[y] = Math.abs(brightness[y] - brightness[y + 1])
   }
-  const smoothed = boxFilter(energy, 5)
+  const smoothed = boxFilter(rawEnergy, 5)
 
   const seams: number[] = []
   for (let i = 1; i < rows; i++) {
     const expected = Math.round((height * i) / rows)
-    const window = Math.round(height * 0.25)
+    const window = Math.round(height * 0.2)
     const start = Math.max(1, expected - window)
     const end = Math.min(height - 2, expected + window)
 
@@ -109,7 +112,7 @@ export function detectHorizSeams(
         seamPos = y
       }
     }
-    seams.push(snapToGapCenter(seamPos, brightness, variance))
+    seams.push(snapToGapCenter(seamPos, rawEnergy))
   }
   return seams
 }
@@ -122,22 +125,20 @@ export function detectVertSeams(
   cols: number
 ): number[] {
   const brightness: number[] = []
-  const variance: number[] = []
   for (let x = 0; x < width; x++) {
     brightness.push(colAverageBrightness(data, width, height, x, channels))
-    variance.push(colVariance(data, width, height, x, channels))
   }
 
-  const energy = new Array(width).fill(0)
+  const rawEnergy = new Array(width).fill(0)
   for (let x = 0; x < width - 1; x++) {
-    energy[x] = Math.abs(brightness[x] - brightness[x + 1])
+    rawEnergy[x] = Math.abs(brightness[x] - brightness[x + 1])
   }
-  const smoothed = boxFilter(energy, 5)
+  const smoothed = boxFilter(rawEnergy, 5)
 
   const seams: number[] = []
   for (let i = 1; i < cols; i++) {
     const expected = Math.round((width * i) / cols)
-    const window = Math.round(width * 0.25)
+    const window = Math.round(width * 0.2)
     const start = Math.max(1, expected - window)
     const end = Math.min(width - 2, expected + window)
 
@@ -149,7 +150,7 @@ export function detectVertSeams(
         seamPos = x
       }
     }
-    seams.push(snapToGapCenter(seamPos, brightness, variance))
+    seams.push(snapToGapCenter(seamPos, rawEnergy))
   }
   return seams
 }
