@@ -94,19 +94,30 @@ async function processCell(
     }
   }
 
+  let upscaleFactor = 1
   if (config.scale > 0) {
     const meta = await sharp(cellBuffer).metadata()
     const longest = Math.max(meta.width!, meta.height!)
-    if (config.scale > longest) {
+    if (config.scale !== longest) {
       const factor = config.scale / longest
-      cellBuffer = await sharp(cellBuffer)
-        .resize(
-          Math.round(meta.width! * factor),
-          Math.round(meta.height! * factor),
-          { kernel: "lanczos3" }
-        )
-        .toBuffer()
+      upscaleFactor = factor
+      const resized = sharp(cellBuffer).resize(
+        Math.round(meta.width! * factor),
+        Math.round(meta.height! * factor),
+        { kernel: "lanczos3" }
+      )
+      cellBuffer = await resized.toBuffer()
     }
+  }
+
+  if (config.extraSharp) {
+    const pipeline = sharp(cellBuffer)
+    if (upscaleFactor > 1) {
+      pipeline.sharpen(1.4, 0.9, 2.2)
+    } else {
+      pipeline.sharpen()
+    }
+    cellBuffer = await pipeline.toBuffer()
   }
 
   const meta = await sharp(cellBuffer).metadata()

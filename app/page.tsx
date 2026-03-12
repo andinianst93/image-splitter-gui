@@ -20,6 +20,7 @@ const DEFAULT_CONFIG: SplitConfig = {
   trimTolerance: 60,
   quality: 0,
   scale: 0,
+  extraSharp: true,
 };
 
 export default function Home() {

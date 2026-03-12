@@ -7,6 +7,7 @@ export interface SplitConfig {
   trimTolerance: number // default 60
   quality: number       // 0 = PNG, 1-100 = JPEG
   scale: number         // 0 = original, 1080/2048/4096 = target px on longest side
+  extraSharp?: boolean  // add stronger sharpening when upscaling
 }
 
 export interface Cell {

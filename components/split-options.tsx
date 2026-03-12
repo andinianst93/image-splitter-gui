@@ -2,7 +2,6 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Slider } from "@/components/ui/slider"
 import { Switch } from "@/components/ui/switch"
@@ -32,6 +31,7 @@ export function SplitOptions({
   hasFile,
 }: SplitOptionsProps) {
   const mode = config.rows === 0 && config.cols === 0 ? "auto" : "manual"
+  const gridOptions = Array.from({ length: 10 }, (_, i) => i + 1)
 
   function setMode(value: string) {
     if (value === "auto") {
@@ -98,37 +98,43 @@ export function SplitOptions({
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label className="text-sm text-muted-foreground">Rows</Label>
-              <Input
-                type="number"
-                min={1}
-                max={20}
-                value={config.rows || ""}
+              <select
+                value={String(config.rows || 2)}
                 onChange={(e) =>
                   onChange({
                     ...config,
-                    rows: parseInt(e.target.value) || 1,
+                    rows: Number(e.target.value),
                     auto: false,
                   })
                 }
-                className="h-9 text-sm"
-              />
+                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+              >
+                {gridOptions.map((value) => (
+                  <option key={value} value={value}>
+                    {value}
+                  </option>
+                ))}
+              </select>
             </div>
             <div className="space-y-1.5">
               <Label className="text-sm text-muted-foreground">Cols</Label>
-              <Input
-                type="number"
-                min={1}
-                max={20}
-                value={config.cols || ""}
+              <select
+                value={String(config.cols || 2)}
                 onChange={(e) =>
                   onChange({
                     ...config,
-                    cols: parseInt(e.target.value) || 1,
+                    cols: Number(e.target.value),
                     auto: false,
                   })
                 }
-                className="h-9 text-sm"
-              />
+                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+              >
+                {gridOptions.map((value) => (
+                  <option key={value} value={value}>
+                    {value}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
         )}
@@ -201,26 +207,6 @@ export function SplitOptions({
           <div className="flex justify-between text-xs text-muted-foreground/50">
             <span>PNG</span>
             <span>JPEG</span>
-          </div>
-        </div>
-
-        {/* Scale */}
-        <div className="space-y-2">
-          <Label className="text-sm text-muted-foreground">Upscale</Label>
-          <div className="grid grid-cols-4 gap-1.5">
-            {([0, 1080, 2048, 4096] as const).map((v) => (
-              <button
-                key={v}
-                onClick={() => onChange({ ...config, scale: v })}
-                className={`rounded-md border px-2 py-1.5 text-xs font-medium transition-colors ${
-                  config.scale === v
-                    ? "border-foreground bg-foreground text-background"
-                    : "border-border bg-card text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {v === 0 ? "Original" : v === 1080 ? "1080p" : v === 2048 ? "2K" : "4K"}
-              </button>
-            ))}
           </div>
         </div>
 
